@@ -172,6 +172,9 @@ impl App {
 
         for cpu in self.states.cpu_state.widget_states.values_mut() {
             if cpu.force_update_data {
+                #[cfg(target_os = "macos")]
+                cpu.set_legend_data(&data_source.cpu_harvest, data_source.apple_gpu_harvest);
+                #[cfg(not(target_os = "macos"))]
                 cpu.set_legend_data(&data_source.cpu_harvest);
             }
         }

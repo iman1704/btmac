@@ -88,6 +88,8 @@ impl Default for Data {
             arc: None,
             #[cfg(feature = "gpu")]
             gpu: None,
+            #[cfg(target_os = "macos")]
+            apple_gpu: None,
         }
     }
 }
@@ -266,6 +268,8 @@ impl DataCollector {
             cgroup_memory_data: CgroupMemCollector::default(),
             #[cfg(target_os = "linux")]
             cgroup_cpu_data: CgroupCpuCollector::default(),
+            #[cfg(target_os = "macos")]
+            apple_gpu_sampler: apple::gpu::AppleGpuSampler::new().ok(),
             include_unmounted_disks: false,
         }
     }
@@ -693,10 +697,13 @@ impl DataCollector {
     #[cfg(target_os = "macos")]
     fn update_apple_gpu(&mut self) {
         if self.widgets_to_harvest.use_cpu {
-            // GPU row lives in CPU widget
             if let Some(sampler) = &mut self.apple_gpu_sampler {
-                self.data.apple_gpu = sampler.get_gpu_usage()
+                self.data.apple_gpu = sampler.get_gpu_usage();
+            } else {
+                self.data.apple_gpu = None;
             }
+        } else {
+            self.data.apple_gpu = None;
         }
     }
 }

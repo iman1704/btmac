@@ -18,8 +18,11 @@ use crate::{
     widgets::CpuWidgetState,
 };
 
-const AVG_POSITION: usize = 1;
 const ALL_POSITION: usize = 0;
+#[cfg(not(target_os = "macos"))]
+const AVG_POSITION: usize = 1;
+#[cfg(target_os = "macos")]
+const GPU_POSITION: usize = 1;
 
 impl Painter {
     pub fn draw_cpu(&self, f: &mut Frame<'_>, app_state: &mut App, draw_loc: Rect, widget_id: u64) {
@@ -120,52 +123,108 @@ impl Painter {
     fn generate_points<'a>(
         &self, cpu_widget_state: &'a CpuWidgetState, data: &'a InnerData, show_avg_cpu: bool,
     ) -> Vec<GraphData<'a>> {
-        let show_avg_offset = if show_avg_cpu { AVG_POSITION } else { 0 };
         let current_scroll_position = cpu_widget_state.table.state.current_index;
-        let cpu_entries = &data.cpu_harvest;
-        let cpu_points = &data.time_series_data.cpu;
         let time = &data.time_series_data.time;
 
-        if current_scroll_position == ALL_POSITION {
-            // This case ensures the other cases cannot have the position be
-            // equal to 0.
+        #[cfg(not(target_os = "macos"))]
+        {
+            let show_avg_offset = if show_avg_cpu { AVG_POSITION } else { 0 };
+            let cpu_entries = &data.cpu_harvest;
+            let cpu_points = &data.time_series_data.cpu;
 
-            cpu_points
-                .iter()
-                .enumerate()
-                .map(|(itx, values)| {
-                    let style = if show_avg_cpu && itx == 0 {
-                        self.styles.avg_cpu_colour
-                    } else {
-                        self.styles.cpu_colour_styles
-                            [(itx - show_avg_offset) % self.styles.cpu_colour_styles.len()]
-                    };
+            if current_scroll_position == ALL_POSITION {
+                return cpu_points
+                    .iter()
+                    .enumerate()
+                    .map(|(itx, values)| {
+                        let style = if show_avg_cpu && itx == 0 {
+                            self.styles.avg_cpu_colour
+                        } else {
+                            self.styles.cpu_colour_styles
+                                [(itx - show_avg_offset) % self.styles.cpu_colour_styles.len()]
+                        };
+                        GraphData::default().style(style).time(time).values(values)
+                    })
+                    .rev()
+                    .collect();
+            } else if let Some(CpuData { .. }) = cpu_entries.get(current_scroll_position - 1) {
+                let style = if show_avg_cpu && current_scroll_position == AVG_POSITION {
+                    self.styles.avg_cpu_colour
+                } else {
+                    let offset_position = current_scroll_position - 1;
+                    self.styles.cpu_colour_styles
+                        [(offset_position - show_avg_offset) % self.styles.cpu_colour_styles.len()]
+                };
+                return vec![
+                    GraphData::default()
+                        .style(style)
+                        .time(time)
+                        .values(&cpu_points[current_scroll_position - 1]),
+                ];
+            }
+            return vec![];
+        }
 
-                    GraphData::default().style(style).time(time).values(values)
-                })
-                .rev()
-                .collect()
-        } else if let Some(CpuData { .. }) = cpu_entries.get(current_scroll_position - 1) {
-            // We generally subtract one from current scroll position because of
-            // the all entry. TODO: Do this a bit better (e.g. we
-            // can just do if let Some(_) = cpu_points.get())
+        #[cfg(target_os = "macos")]
+        {
+            let cpu_points = &data.time_series_data.cpu;
+            let cpu_entries = &data.cpu_harvest;
+            let has_gpu = data.apple_gpu_harvest.is_some();
+            let gpu_offset = if has_gpu { 1 } else { 0 };
+            let show_avg_offset = if show_avg_cpu { 1 } else { 0 };
 
-            let style = if show_avg_cpu && current_scroll_position == AVG_POSITION {
-                self.styles.avg_cpu_colour
-            } else {
-                let offset_position = current_scroll_position - 1;
-                self.styles.cpu_colour_styles
-                    [(offset_position - show_avg_offset) % self.styles.cpu_colour_styles.len()]
-            };
+            if current_scroll_position == ALL_POSITION {
+                let mut out: Vec<GraphData<'_>> = cpu_points
+                    .iter()
+                    .enumerate()
+                    .map(|(itx, values)| {
+                        let style = if show_avg_cpu && itx == 0 {
+                            self.styles.avg_cpu_colour
+                        } else {
+                            self.styles.cpu_colour_styles
+                                [(itx - show_avg_offset) % self.styles.cpu_colour_styles.len()]
+                        };
+                        GraphData::default().style(style).time(time).values(values)
+                    })
+                    .rev()
+                    .collect();
+                // GPU overlay on "All" — uses avg colour until dedicated gpu colour exists
+                out.push(
+                    GraphData::default()
+                        .style(self.styles.avg_cpu_colour)
+                        .time(time)
+                        .values(&data.time_series_data.apple_gpu),
+                );
+                return out;
+            }
 
-            vec![
-                GraphData::default()
-                    .style(style)
-                    .time(time)
-                    .values(&cpu_points[current_scroll_position - 1]),
-            ]
-        } else {
-            vec![]
+            if has_gpu && current_scroll_position == GPU_POSITION {
+                return vec![
+                    GraphData::default()
+                        .style(self.styles.avg_cpu_colour)
+                        .time(time)
+                        .values(&data.time_series_data.apple_gpu),
+                ];
+            }
+
+            // Single CPU / Avg selection — offset by GPU row
+            if let Some(idx) = current_scroll_position.checked_sub(1 + gpu_offset) {
+                if let Some(CpuData { .. }) = cpu_entries.get(idx) {
+                    // cpu_points is indexed by same idx (AVG at 0 when shown)
+                    if let Some(values) = cpu_points.get(idx) {
+                        let style = if show_avg_cpu && idx == 0 {
+                            self.styles.avg_cpu_colour
+                        } else {
+                            let offset = idx.saturating_sub(show_avg_offset);
+                            self.styles.cpu_colour_styles[offset % self.styles.cpu_colour_styles.len()]
+                        };
+                        return vec![
+                            GraphData::default().style(style).time(time).values(values),
+                        ];
+                    }
+                }
+            }
+            return vec![];
         }
     }
 

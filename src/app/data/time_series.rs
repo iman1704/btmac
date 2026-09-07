@@ -62,6 +62,10 @@ pub struct TimeSeriesData {
     /// GPU memory data.
     pub gpu_mem: HashMap<String, Values>,
 
+    #[cfg(target_os = "macos")]
+    /// Apple GPU utilisation 0..100 over time. Break on missing sample.
+    pub apple_gpu: Values,
+
     /// Temperature data.
     ///
     /// TODO: Maybe make this use TypedTemperature?
@@ -183,6 +187,15 @@ impl TimeSeriesData {
                 for g in self.gpu_mem.values_mut() {
                     g.insert_break();
                 }
+            }
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            if let Some(pct) = data.apple_gpu.map(|v| f64::from(v)) {
+                self.apple_gpu.push(pct);
+            } else {
+                self.apple_gpu.insert_break();
             }
         }
 
@@ -340,6 +353,9 @@ impl TimeSeriesData {
                 }
             });
         }
+
+        #[cfg(target_os = "macos")]
+        let _ = self.apple_gpu.prune_and_shrink_to_fit(end);
 
         self.temperature.retain(|_, data| {
             let _ = data.prune(end);

@@ -44,15 +44,6 @@ impl CpuWidgetTableData {
             usage: data.usage,
         }
     }
-
-    /// Placeholder generator for the GPU average row. Replace with a real
-    /// GPU usage sample once GPU collection exists.
-    // TODO: replace placeholder gpu data with real data
-    fn random_gpu_average() -> CpuWidgetTableData {
-        CpuWidgetTableData::GpuAverage {
-            usage: rand::random::<f32>() * 100.0,
-        }
-    }
 }
 
 impl DataToCell<CpuWidgetColumn> for CpuWidgetTableData {
@@ -210,11 +201,22 @@ impl CpuWidgetState {
         self.force_update_data = true;
     }
 
+    #[cfg(not(target_os = "macos"))]
     pub fn set_legend_data(&mut self, data: &[CpuData]) {
-        let gpu_row = gpu_usage.map(|usage| CpuWidgetTableData::GpuAverage { usage });
         self.table.set_data(
             std::iter::once(CpuWidgetTableData::All)
-                .chain(gpu_row) // GPU legend
+                .chain(data.iter().map(CpuWidgetTableData::from_cpu_data))
+                .collect(),
+        );
+        self.force_update_data = false;
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn set_legend_data(&mut self, data: &[CpuData], gpu: Option<f32>) {
+        let gpu_row = gpu.map(|usage| CpuWidgetTableData::GpuAverage { usage });
+        self.table.set_data(
+            std::iter::once(CpuWidgetTableData::All)
+                .chain(gpu_row)
                 .chain(data.iter().map(CpuWidgetTableData::from_cpu_data))
                 .collect(),
         );

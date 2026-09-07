@@ -114,6 +114,8 @@ impl Default for InnerData {
             cache_harvest: None,
             swap_harvest: None,
             cpu_harvest: CpuHarvest::default(),
+            #[cfg(target_os = "macos")]
+            apple_gpu_harvest: None,
             load_avg_harvest: LoadAvgHarvest::default(),
             process_data: Default::default(),
             prev_io: FxHashMap::default(),
