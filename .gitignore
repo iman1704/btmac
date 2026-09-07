@@ -51,3 +51,8 @@ profile.json.gz
 
 # Sometimes used for scripts
 .ruff_cache
+TODO.md
+METRICS.md
+macmon
+placeholder.md
+AGENTS.md
