@@ -249,6 +249,12 @@ impl Painter {
                         rect[0],
                         app_state.current_widget.widget_id,
                     ),
+                    Power => self.draw_power_graph(
+                        f,
+                        app_state,
+                        rect[0],
+                        app_state.current_widget.widget_id,
+                    ),
                     Disk => self.draw_disk_table(
                         f,
                         app_state,
@@ -504,6 +510,9 @@ impl Painter {
                     }
                     DiskIoGraph => {
                         self.draw_disk_io_graph(f, app_state, *draw_loc, widget.widget_id)
+                    }
+                    Power => {
+                        self.draw_power_graph(f, app_state, *draw_loc, widget.widget_id)
                     }
                     _ => {}
                 }

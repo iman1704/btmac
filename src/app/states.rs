@@ -6,8 +6,8 @@ use crate::{
     utils::input::InputFieldState,
     widgets::{
         BatteryWidgetState, CpuWidgetState, DiskIoGraphWidgetState, DiskTableWidget,
-        MemWidgetState, NetWidgetState, ProcWidgetState, TempGraphWidgetState, TempWidgetState,
-        query::ProcessQuery,
+        MemWidgetState, NetWidgetState, PowerWidgetState, ProcWidgetState,
+        TempGraphWidgetState, TempWidgetState, query::ProcessQuery,
     },
 };
 
@@ -21,6 +21,7 @@ pub struct AppWidgetStates {
     pub disk_state: DiskState,
     pub disk_io_graph_state: DiskIoGraphStates,
     pub battery_state: AppBatteryState,
+    pub power_state: PowerState,
     pub basic_table_widget_state: Option<BasicTableWidgetState>,
 }
 
@@ -158,6 +159,20 @@ impl MemState {
     }
 
     pub fn get_mut_widget_state(&mut self, widget_id: u64) -> Option<&mut MemWidgetState> {
+        self.widget_states.get_mut(&widget_id)
+    }
+}
+
+pub struct PowerState {
+    pub widget_states: HashMap<u64, PowerWidgetState>,
+}
+
+impl PowerState {
+    pub fn init(widget_states: HashMap<u64, PowerWidgetState>) -> Self {
+        PowerState { widget_states }
+    }
+
+    pub fn get_mut_widget_state(&mut self, widget_id: u64) -> Option<&mut PowerWidgetState> {
         self.widget_states.get_mut(&widget_id)
     }
 }

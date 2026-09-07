@@ -223,6 +223,10 @@ impl App {
         for widget_state in self.states.temp_graph_state.widget_states.values_mut() {
             widget_state.graph.state_mut().reset_zoom();
         }
+
+        for widget_state in self.states.power_state.widget_states.values_mut() {
+            widget_state.graph.state_mut().reset_zoom();
+        }
     }
 
     pub fn should_get_widget_bounds(&self) -> bool {

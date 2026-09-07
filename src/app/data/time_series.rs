@@ -76,6 +76,9 @@ pub struct TimeSeriesData {
 
     /// Disk I/O write rate data, keyed by device name.
     pub disk_io_write: HashMap<String, ChunkedData<f64>>,
+
+    /// Power usage in watts (placeholder random data).
+    pub power: Values,
 }
 
 impl TimeSeriesData {
@@ -197,6 +200,13 @@ impl TimeSeriesData {
             } else {
                 self.apple_gpu.insert_break();
             }
+        }
+
+        // Power placeholder random data (visual only).
+        if used_widgets.use_power {
+            use rand::RngExt;
+            let mut rng = rand::rng();
+            self.power.push(rng.random_range(5.0..20.0));
         }
 
         if used_widgets.use_temp_graph {
@@ -331,6 +341,7 @@ impl TimeSeriesData {
 
         let _ = self.ram.prune_and_shrink_to_fit(end);
         let _ = self.swap.prune_and_shrink_to_fit(end);
+        let _ = self.power.prune_and_shrink_to_fit(end);
 
         #[cfg(not(target_os = "windows"))]
         let _ = self.cache_mem.prune_and_shrink_to_fit(end);

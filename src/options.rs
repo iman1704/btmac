@@ -384,6 +384,7 @@ pub(crate) fn init_app(args: BottomArgs, config: Config) -> Result<(App, BottomL
     let mut disk_state_map: FxHashMap<u64, DiskTableWidget> = FxHashMap::default();
     let mut disk_io_graph_state_map: FxHashMap<u64, DiskIoGraphWidgetState> = FxHashMap::default();
     let mut battery_state_map: FxHashMap<u64, BatteryWidgetState> = FxHashMap::default();
+    let mut power_state_map: FxHashMap<u64, PowerWidgetState> = FxHashMap::default();
 
     let autohide_timer = if autohide_time {
         Some(Instant::now())
@@ -724,6 +725,12 @@ pub(crate) fn init_app(args: BottomArgs, config: Config) -> Result<(App, BottomL
                             battery_state_map
                                 .insert(widget.widget_id, BatteryWidgetState::default());
                         }
+                        Power => {
+                            power_state_map.insert(
+                                widget.widget_id,
+                                PowerWidgetState::init(ts_config, autohide_timer),
+                            );
+                        }
                         // FIXME: This is kind of a hack that we have these cases at all.
                         Empty | BasicCpu | BasicMem | BasicNet | BasicTables | CpuLegend
                         | ProcSort | ProcSearch => {}
@@ -769,6 +776,7 @@ pub(crate) fn init_app(args: BottomArgs, config: Config) -> Result<(App, BottomL
         use_temp_graph: used_widget_set.contains(&TempGraph),
         use_disk_io_graph: used_widget_set.contains(&DiskIoGraph),
         use_battery: used_widget_set.contains(&Battery),
+        use_power: used_widget_set.contains(&Power),
     };
 
     let (disk_name_filter, disk_mount_filter) = {
@@ -810,6 +818,7 @@ pub(crate) fn init_app(args: BottomArgs, config: Config) -> Result<(App, BottomL
         disk_state: DiskState::init(disk_state_map),
         disk_io_graph_state: DiskIoGraphStates::init(disk_io_graph_state_map),
         battery_state: AppBatteryState::init(battery_state_map),
+        power_state: PowerState::init(power_state_map),
         basic_table_widget_state,
     };
 
