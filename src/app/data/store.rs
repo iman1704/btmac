@@ -87,6 +87,8 @@ pub struct InnerData {
     #[cfg(feature = "gpu")]
     pub(crate) gpu_harvest: Vec<(String, MemData)>,
     pub(crate) cpu_harvest: CpuHarvest,
+    #[cfg(target_os = "macos")]
+    pub(crate) apple_gpu_harvest: Option<f32>,
     pub(crate) load_avg_harvest: LoadAvgHarvest,
     pub(crate) process_data: ProcessData,
     /// TODO: (points_rework_v1) Might be a better way to do this without having
@@ -189,6 +191,11 @@ impl InnerData {
 
         if let Some(cpu) = data.cpu {
             self.cpu_harvest = cpu;
+
+            #[cfg(target_os = "macos")]
+            {
+                self.apple_gpu_harvest = data.apple_gpu;
+            }
         }
 
         if let Some(load_avg) = data.load_avg {

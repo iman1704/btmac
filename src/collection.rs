@@ -15,6 +15,9 @@ mod linux {
     pub mod utils;
 }
 
+#[cfg(target_os = "macos")]
+pub mod apple;
+
 #[cfg(feature = "battery")]
 pub mod batteries;
 pub mod cpu;
@@ -60,6 +63,8 @@ pub struct Data {
     pub arc: Option<memory::MemData>,
     #[cfg(feature = "gpu")]
     pub gpu: Option<Vec<(String, memory::MemData)>>,
+    #[cfg(target_os = "macos")]
+    pub apple_gpu: Option<f32>,
 }
 
 impl Default for Data {
@@ -108,6 +113,10 @@ impl Data {
         #[cfg(feature = "gpu")]
         {
             self.gpu = None;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            self.apple_gpu = None;
         }
     }
 }
@@ -204,6 +213,9 @@ pub struct DataCollector {
 
     #[cfg(target_os = "linux")]
     cgroup_cpu_data: CgroupCpuCollector,
+
+    #[cfg(target_os = "macos")]
+    apple_gpu_sampler: Option<apple::gpu::AppleGpuSampler>,
 }
 
 const LESS_ROUTINE_TASK_TIME: Duration = Duration::from_secs(60);
@@ -417,6 +429,9 @@ impl DataCollector {
 
         // Update times for future reference.
         self.last_collection_time = self.data.collection_time;
+
+        #[cfg(target_os = "macos")]
+        self.update_apple_gpu();
     }
 
     /// Gets GPU data. Note this will usually append to other previously
@@ -659,6 +674,16 @@ impl DataCollector {
             memory.total_bytes.get()
         } else {
             self.sys.system.total_memory()
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn update_apple_gpu(&mut self) {
+        if self.widgets_to_harvest.use_cpu {
+            // GPU row lives in CPU widget
+            if let Some(sampler) = &mut self.apple_gpu_sampler {
+                self.data.apple_gpu = sampler.get_gpu_usage()
+            }
         }
     }
 }

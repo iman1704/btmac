@@ -33,6 +33,7 @@ impl ColumnHeader for CpuWidgetColumn {
 
 pub enum CpuWidgetTableData {
     All,
+    GpuAverage { usage: f32 }, // New: GPU average row
     Entry { data_type: CpuDataType, usage: f32 },
 }
 
@@ -41,6 +42,15 @@ impl CpuWidgetTableData {
         CpuWidgetTableData::Entry {
             data_type: data.data_type,
             usage: data.usage,
+        }
+    }
+
+    /// Placeholder generator for the GPU average row. Replace with a real
+    /// GPU usage sample once GPU collection exists.
+    // TODO: replace placeholder gpu data with real data
+    fn random_gpu_average() -> CpuWidgetTableData {
+        CpuWidgetTableData::GpuAverage {
+            usage: rand::random::<f32>() * 100.0,
         }
     }
 }
@@ -66,6 +76,17 @@ impl DataToCell<CpuWidgetColumn> for CpuWidgetTableData {
                 CpuWidgetColumn::Cpu => Some("All".into()),
                 CpuWidgetColumn::Use { .. } => None,
             },
+
+            // Show GPU
+            CpuWidgetTableData::GpuAverage { usage } => match column {
+                CpuWidgetColumn::Cpu => Some("GPU".into()),
+                CpuWidgetColumn::Use { show_decimal } => Some(if *show_decimal {
+                    format!("{usage:.1}%").into()
+                } else {
+                    format!("{usage:.0}%").into()
+                }),
+            },
+
             CpuWidgetTableData::Entry {
                 data_type,
                 usage: last_entry,
@@ -102,6 +123,7 @@ impl DataToCell<CpuWidgetColumn> for CpuWidgetTableData {
     fn style_row<'a>(&self, row: Row<'a>, painter: &Painter) -> Row<'a> {
         let style = match self {
             CpuWidgetTableData::All => painter.styles.all_cpu_colour,
+            CpuWidgetTableData::GpuAverage { .. } => painter.styles.avg_cpu_colour, // Reused "avg" color for GPU graph
             CpuWidgetTableData::Entry {
                 data_type,
                 usage: _,
@@ -189,8 +211,10 @@ impl CpuWidgetState {
     }
 
     pub fn set_legend_data(&mut self, data: &[CpuData]) {
+        let gpu_row = gpu_usage.map(|usage| CpuWidgetTableData::GpuAverage { usage });
         self.table.set_data(
             std::iter::once(CpuWidgetTableData::All)
+                .chain(gpu_row) // GPU legend
                 .chain(data.iter().map(CpuWidgetTableData::from_cpu_data))
                 .collect(),
         );
